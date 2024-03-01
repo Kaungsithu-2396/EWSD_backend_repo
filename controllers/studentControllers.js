@@ -75,6 +75,10 @@ const loginAcc = asyncHandler(async (req, resp) => {
         resp.status(404);
         throw new Error("Please register first");
     }
+    if (isUserAlreadyRegistered.verified === false) {
+        resp.status(401);
+        throw new Error("Email verification process is left to do");
+    }
     if (await bcrypt.compare(password, isUserAlreadyRegistered.password)) {
         resp.status(201).send({
             message: "authorized",
