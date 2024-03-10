@@ -5,6 +5,7 @@ const sendMailtoClient = require("../util/sendMail");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const bcrypt = require("bcrypt");
+const rtg = require("random-token-generator");
 //@desc getAllStudents
 //@route POST /api/v1/students
 //@access Private
@@ -55,7 +56,11 @@ const registerStudent = asyncHandler(async (req, resp) => {
         token: crypto.randomBytes(40).toString("hex"),
     });
     const url = `${process.env.BASE_URL}/user/${newStudent.id}/verify/${token.token}`;
-    await sendMailtoClient(newStudent.email, "Email Verification လေးပါဗျ", url);
+    await sendMailtoClient(
+        newStudent.email,
+        "Here is the email verification for EWSD_Project",
+        url
+    );
     resp.status(201).send({
         message: "Please verify the email",
         token: generateToken(newStudent.id, newStudent.role),
@@ -75,6 +80,7 @@ const loginAcc = asyncHandler(async (req, resp) => {
         resp.status(404);
         throw new Error("Please register first");
     }
+    //prohibiting the unverified users to log in
     if (isUserAlreadyRegistered.verified === false) {
         resp.status(401);
         throw new Error("Email verification process is left to do");
@@ -92,6 +98,63 @@ const loginAcc = asyncHandler(async (req, resp) => {
         resp.status(400);
         throw new Error("Incorrect password");
     }
+});
+//@desc forgrot password
+//@route POST /api/v1/forgot-password
+//@access PUBLIC
+const forgotPassword = asyncHandler(async (req, resp) => {
+    const { email } = req.body;
+    const verifiedExisitingEmail = await studentModel.findOne({ email });
+    if (!verifiedExisitingEmail) {
+        resp.status(401);
+        throw new Error(`User with this email ${email} does not exisit`);
+    }
+    const token = crypto.randomBytes(40).toString("hex");
+    await tokenModel.updateOne({ userId: verifiedExisitingEmail.id, token });
+    const url = `${process.env.BASE_URL}/user/${verifiedExisitingEmail.id}/forgot-password/${token}`;
+    await sendMailtoClient(
+        verifiedExisitingEmail.email,
+        "Password Reset Link",
+        url
+    );
+    resp.status(201).send({
+        message: "password reset email has been sent",
+    });
+});
+//@desc resetpassword
+//@route api/v1/user/:id/forgot-password/:token
+//@access PUBLIC
+const resetPassword = asyncHandler(async (req, resp) => {
+    const { id, token } = req.params;
+    const { password } = req.body;
+
+    const isUserExisit = await studentModel.findById(id);
+    const verifiedToken = await tokenModel.find({
+        userId: isUserExisit.id,
+        token,
+    });
+    if (!isUserExisit) {
+        throw new Error("User does not exisit with this email");
+    }
+    if (!token || !verifiedToken) {
+        resp.status(401);
+        throw new Error("invalid link");
+    }
+    const salt = await bcrypt.genSalt(10);
+    const hashPassword = await bcrypt.hash(password, salt);
+    await studentModel.findByIdAndUpdate(
+        id,
+        {
+            password: hashPassword,
+        },
+        {
+            new: true,
+        }
+    );
+    resp.status(201).send({
+        message: "password reset success",
+        token: generateToken(isUserExisit.id, isUserExisit.role),
+    });
 });
 const verifyEmail = asyncHandler(async (req, resp) => {
     const { id, token } = req.params;
@@ -112,7 +175,17 @@ const verifyEmail = asyncHandler(async (req, resp) => {
         resp.status(401);
         throw new Error("Invalid link");
     }
-    await studentModel.updateOne({ id: user.id, verified: true });
+
+    await studentModel.findByIdAndUpdate(
+        user.id,
+        {
+            verified: true,
+        },
+        {
+            new: true,
+        }
+    );
+
     resp.status(201).send({
         message: "email verification successfully done",
     });
@@ -122,4 +195,11 @@ const generateToken = (id, role) => {
         expiresIn: "2d",
     });
 };
-module.exports = { registerStudent, getAllStudents, loginAcc, verifyEmail };
+module.exports = {
+    registerStudent,
+    getAllStudents,
+    loginAcc,
+    verifyEmail,
+    forgotPassword,
+    resetPassword,
+};
