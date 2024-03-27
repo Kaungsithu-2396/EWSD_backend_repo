@@ -19,6 +19,8 @@ const {
     updateFileStatus,
     deleteFileFromMongoDB,
 } = require("../controllers/studentControllers");
+const getSpecificData = require("../controllers/profileController");
+studentRouter.route("/profile/me").get(getSpecificData);
 studentRouter.route("/register").post(registerStudent);
 studentRouter.route("/login").post(loginAcc);
 studentRouter.route("/students").get(verifiedAuthorizedUser, getAllStudents);

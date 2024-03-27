@@ -38,6 +38,7 @@ const getAllStudents = asyncHandler(async (req, resp) => {
 const registerStudent = asyncHandler(async (req, resp) => {
     const { name, email, password, role, faculty, academicYear, termsAgreed } =
         req.body;
+    console.log(req.body);
     if (!name || !email || !password || !faculty || !academicYear) {
         resp.status(400);
         throw new Error("fail to provide the complete data");
@@ -65,7 +66,7 @@ const registerStudent = asyncHandler(async (req, resp) => {
         userId: newStudent.id,
         token: crypto.randomBytes(40).toString("hex"),
     });
-    const url = `${process.env.BASE_URL}/user/${newStudent.id}/verify/${token.token}`;
+    const url = `${process.env.BASE_URL}/activate-email?id=${newStudent.id}&token=${token.token}`;
     await sendMailtoClient(
         newStudent.email,
         "Here is the email verification for EWSD_Project",
@@ -121,7 +122,7 @@ const forgotPassword = asyncHandler(async (req, resp) => {
     }
     const token = crypto.randomBytes(40).toString("hex");
     await tokenModel.updateOne({ userId: verifiedExisitingEmail.id, token });
-    const url = `${process.env.BASE_URL}/user/${verifiedExisitingEmail.id}/forgot-password/${token}`;
+    const url = `${process.env.BASE_URL}reset-password?id=${verifiedExisitingEmail.id}&token=${token}`;
     await sendMailtoClient(
         verifiedExisitingEmail.email,
         "Password Reset Link",

@@ -9,13 +9,17 @@ const errorHandler = require("./middleware/errorHandlerMiddleware");
 const academicRouter = require("./routes/academicRoutes");
 const facultyRoutes = require("./routes/facultyRoutes");
 const dateSettingRouter = require("./routes/dateSettingRoute");
+const cors = require("cors");
 connectDB();
+app.use(cors());
 app.use(express.json());
 app.use("/api/v1", studentRouter);
+
 app.use("/api/v1/comment", commentRouter);
 app.use("/api/v1/academicYear", academicRouter);
 app.use("/api/v1/faculty", facultyRoutes);
 app.use("/api/v1/dateSetting", dateSettingRouter);
+
 app.use(errorHandler);
 
 app.listen(PORT, () => {
