@@ -6,9 +6,9 @@ const {
     getAllComments,
     getOneComment
 } = require("../controllers/commentController");
-commentRouter.route("/comment/createComment/:contributionId").post(createComment);
-commentRouter.route("/comment/editComment/:commentId").patch(editComment);
-commentRouter.route("/comment/getAllComments").get(getAllComments);
-commentRouter.route("/comment/getOneComment/:commentId").get(getOneComment);
+commentRouter.route("/createComment/:contributionId").post(createComment);
+commentRouter.route("/editComment/:commentId").patch(editComment);
+commentRouter.route("/getAllComments").get(getAllComments);
+commentRouter.route("/getOneComment/:commentId").get(getOneComment);
 
 module.exports = commentRouter;

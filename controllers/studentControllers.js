@@ -3,7 +3,7 @@ const asyncHandler = require("express-async-handler");
 const tokenModel = require("../Models/tokenModel");
 const fileModel = require("../Models/fileModel");
 const sendMailtoClient = require("../util/sendMail");
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const bcrypt = require("bcrypt");
@@ -11,10 +11,10 @@ const rtg = require("random-token-generator");
 const multer = require("multer");
 
 const storage = multer.memoryStorage();
-const upload = multer({ 
-    storage: storage,
-    limits: { fileSize: 10 * 1024 * 1024 } // Limit file size to 10MB
-  });
+const upload = multer({
+    storage,
+    limits: { fileSize: 10 * 1024 * 1024 }, // Limit file size to 10MB
+});
 
 //@desc getAllStudents
 //@route POST /api/v1/students
@@ -205,55 +205,70 @@ const verifyEmail = asyncHandler(async (req, resp) => {
 //@access Private
 const uploadFile = upload.array("files", 3);
 const uploadFileToMongoDB = asyncHandler(async (req, resp) => {
-    const { name,title,termsAgreed } = req.body; // Get other relevant data from the request body
-  
-    console.log('req.files:', req.files);
-  
-    if (!req.files || req.files.length === 0) {
-      resp.status(400);
-      throw new Error("No files uploaded");
-    }
-  
-    const uploadedFiles = [];
-  
-    for (let i = 0; i < req.files.length; i++) {
-      const file = req.files[i];
-  
-      // Process each file
-      file.originalname = Buffer.from(file.originalname, "latin1").toString("utf-8");
-  
-      if (!title) {
-        resp.status(400);
-        throw new Error("Please provide a title name");
-      }
+    const { title, termsAgreed } = req.body; // Get other relevant data from the request body
 
-      if (!termsAgreed) {
+    // console.log("req.files:", req.files);
+
+    if (!req.files || req.files.length === 0) {
         resp.status(400);
-        throw new Error("You must agree to the terms before uploading files");
-      }
-  
-      const fileBuffer = file.buffer; // File data in memory
-  
-      // Create a new instance of file model and save it to MongoDB
-      const newFile = await fileModel.create({
-        title,
-        fileBuffer,
-        termsAgreed,
-        article: file.originalname,
-        fileType: file.mimetype,
-        documentOwner: name,
-        createdAt: new Date(),
-      });
-  
-      uploadedFiles.push(newFile);
+        throw new Error("No files uploaded");
     }
-  
-    resp.status(201).send({
-      message: "Files uploaded successfully",
-      data: uploadedFiles,
-      success: true,
+
+    const uploadedFiles = [];
+
+    for (let i = 0; i < req.files.length; i++) {
+        const file = req.files[i];
+
+        // Process each file
+        file.originalname = Buffer.from(file.originalname, "latin1").toString(
+            "utf-8"
+        );
+
+        if (!title) {
+            resp.status(400);
+            throw new Error("Please provide a title name");
+        }
+
+        if (!termsAgreed) {
+            resp.status(400);
+            throw new Error(
+                "You must agree to the terms before uploading files"
+            );
+        }
+
+        const fileBuffer = file.buffer; // File data in memory
+
+        // Create a new instance of file model and save it to MongoDB
+        const newFile = await fileModel.create({
+            title,
+            fileBuffer,
+            termsAgreed,
+            article: file.originalname,
+            fileType: file.mimetype,
+            documentOwner: req.student.id,
+            createdAt: new Date(),
+        });
+
+        uploadedFiles.push(newFile);
+    }
+    //send mail to mcr under the same faculty
+    const respectiveMCR = await studentModel.find({
+        role: "marketing coordinator",
+        faculty: req.student.faculty,
     });
-  });
+    if (uploadedFiles.length > 0) {
+        await sendMailtoClient(
+            respectiveMCR[0].email,
+            `Document submited by ${req.student.name}`
+        );
+    }
+
+    resp.status(201).send({
+        message: "Files uploaded successfully",
+        data: uploadedFiles,
+        success: true,
+    });
+});
 
 const getAllFiles = asyncHandler(async (req, res) => {
     try {
@@ -265,12 +280,15 @@ const getAllFiles = asyncHandler(async (req, res) => {
         const parsedPerPage = parseInt(perPage) || 10; // Defaulting to 10 documents per page
 
         // Constructing query
-        const query = fileModel.find().select('-fileType');
+        const query = fileModel.find().select("-fileType");
         // Counting
         const totalDocuments = await fileModel.countDocuments();
         // Pagination
         const totalPages = Math.ceil(totalDocuments / parsedPerPage);
-        const currentPage = Math.min(Math.ceil(parsedCount / parsedPerPage), totalPages);
+        const currentPage = Math.min(
+            Math.ceil(parsedCount / parsedPerPage),
+            totalPages
+        );
         let startIndex = (currentPage - 1) * parsedPerPage;
 
         // Ensure startIndex is non-negative
@@ -288,38 +306,42 @@ const getAllFiles = asyncHandler(async (req, res) => {
             data: files,
             currentPage,
             totalPages,
-            totalDocuments
+            totalDocuments,
         });
     } catch (error) {
         console.error(error); // Log the error for debugging
         res.status(500).json({
             success: false,
-            error: error.message // Return the error message to the client
+            error: error.message, // Return the error message to the client
         });
     }
 });
 // download multiple files
 const downloadFileFromMongoDB = asyncHandler(async (req, res) => {
     const { fileIds } = req.body; // Extract fileIds from request body
-    console.log("fileIds:",fileIds);
+    console.log("fileIds:", fileIds);
     if (!fileIds || !Array.isArray(fileIds) || fileIds.length === 0) {
-        return res.status(400).json({ status: 'fail', message: 'File IDs must be provided as a non-empty array in the request body.' });
+        return res.status(400).json({
+            status: "fail",
+            message:
+                "File IDs must be provided as a non-empty array in the request body.",
+        });
     }
-    
+
     // Create an array to store promises for retrieving files
-    const filePromises = fileIds.map(async fileId => {
+    const filePromises = fileIds.map(async (fileId) => {
         const fileIdObj = new mongoose.Types.ObjectId(fileId);
         // Query MongoDB to find the file by its ID
         const file = await fileModel.findById(fileIdObj);
-        
+
         if (!file) {
             throw new Error(`File with ID ${fileId} not found`);
         }
-        
+
         // Retrieve file data from MongoDB document
         const fileName = file.fileName;
         const fileBuffer = file.fileBuffer;
-        
+
         return { fileName, fileBuffer };
     });
 
@@ -341,7 +363,9 @@ const downloadFileFromMongoDB = asyncHandler(async (req, res) => {
     });
 
     // Send zip file data as response
-    res.send(zipBuffer);
+    res.send({
+        zip: zipBuffer,
+    });
 });
 // update File
 // const updateFileInMongoDB = asyncHandler(async (req, res) => {
@@ -353,19 +377,19 @@ const downloadFileFromMongoDB = asyncHandler(async (req, res) => {
 //     if (!title) {
 //         return res.status(400).json({ status: 'fail', message: 'Title must be provided in the request body' });
 //     }
-    
+
 //     try {
 //         const file = await fileModel.findOne({ _id: fileIdObj });
 //         console.log("file", file);
 //         if (!file) {
 //             return res.status(404).json({ status: 'fail', message: 'File not found' });
 //         }
-        
+
 //         if (!termsAgreed) {
 //             resp.status(400);
 //             throw new Error("You must agree to the terms before uploading files");
 //           }
-        
+
 //         // Update fileName
 //         file.title = title;
 //         // If a new file is uploaded, update fileBuffer, fileType, and article
@@ -377,7 +401,7 @@ const downloadFileFromMongoDB = asyncHandler(async (req, res) => {
 //         }
 //         // Save the updated file document
 //         await file.save();
-    
+
 //         res.status(200).json({
 //             status: 'success',
 //             message: 'File updated successfully',
@@ -389,67 +413,69 @@ const downloadFileFromMongoDB = asyncHandler(async (req, res) => {
 //     } catch (error) {
 //         console.error("Error finding file:", error);
 //         return res.status(500).json({ status: 'fail', message: 'Error finding file' });
-//     }  
+//     }
 // });
 const updateFile = upload.array("files", 3);
 const updateFileInMongoDB = asyncHandler(async (req, resp) => {
     const { title, termsAgreed } = req.body; // Get title and termsAgreed from the request body
     const { fileId } = req.params;
-    const fileIdObj = new mongoose.Types.ObjectId(fileId); 
-  
-    console.log('req.files:', req.files);
-  
+    const fileIdObj = new mongoose.Types.ObjectId(fileId);
+
+    console.log("req.files:", req.files);
+
     if (!req.files || req.files.length === 0) {
-      resp.status(400);
-      throw new Error("No files uploaded");
+        resp.status(400);
+        throw new Error("No files uploaded");
     }
 
     if (!fileId) {
-      resp.status(400);
-      throw new Error("File ID is required for updating");
+        resp.status(400);
+        throw new Error("File ID is required for updating");
     }
-  
+
     // Find the file in MongoDB by ID
     const existingFile = await fileModel.findById(fileIdObj);
-  
+
     if (!existingFile) {
-      resp.status(404);
-      throw new Error("File not found");
+        resp.status(404);
+        throw new Error("File not found");
     }
-  
+
     // Update the title if provided
     if (title) {
-      existingFile.title = title;
+        existingFile.title = title;
     }
 
     // Check if termsAgreed is provided
     if (termsAgreed !== undefined) {
-      existingFile.termsAgreed = termsAgreed;
+        existingFile.termsAgreed = termsAgreed;
     }
-  
+
     // Handle file update if a new file is uploaded
     for (let i = 0; i < req.files.length; i++) {
-      const file = req.files[i];
-      
-      // Process each file
-      file.originalname = Buffer.from(file.originalname, "latin1").toString("utf-8");
-      
-      const fileBuffer = file.buffer; // File data in memory
-  
-      // Update the file data if a new file is uploaded
-      existingFile.fileBuffer = fileBuffer;
-      existingFile.article = file.originalname;
-      existingFile.fileType = file.mimetype;
-      existingFile.createdAt = new Date();
+        const file = req.files[i];
+
+        // Process each file
+        file.originalname = Buffer.from(file.originalname, "latin1").toString(
+            "utf-8"
+        );
+
+        const fileBuffer = file.buffer; // File data in memory
+
+        // Update the file data if a new file is uploaded
+        existingFile.fileBuffer = fileBuffer;
+        existingFile.article = file.originalname;
+        existingFile.fileType = file.mimetype;
+        existingFile.createdAt = new Date();
     }
-  
+
     // Save the updated file back to MongoDB
     const updatedFile = await existingFile.save();
-  
+
     resp.status(200).send({
-      message: "File updated successfully",
-      data: updatedFile,
-      success: true,
+        message: "File updated successfully",
+        data: updatedFile,
+        success: true,
     });
 });
 
@@ -457,35 +483,44 @@ const updateFileInMongoDB = asyncHandler(async (req, resp) => {
 const deleteFileFromMongoDB = asyncHandler(async (req, res) => {
     const { fileId } = req.params; // Extract fileId from request parameters
     const fileIdObj = new mongoose.Types.ObjectId(fileId);
-  
+
     // Query MongoDB to find the file by its ID
     const file = await fileModel.findById(fileIdObj);
-  
+
     if (!file) {
-        return res.status(404).json({ status: 'fail', message: 'File not found' });
+        return res
+            .status(404)
+            .json({ status: "fail", message: "File not found" });
     }
-  
+
     // Delete the file from MongoDB
     await fileModel.findByIdAndDelete(fileIdObj);
-  
+
     // Respond with success message
-    res.status(200).json({ status: 'success', message: 'File deleted successfully' });
+    res.status(200).json({
+        status: "success",
+        message: "File deleted successfully",
+    });
 });
 
 const updateFileStatus = asyncHandler(async (req, res) => {
     const { fileId } = req.params;
     const fileIdObj = new mongoose.Types.ObjectId(fileId);
-    const { title,status } = req.body;
+    const { title, status } = req.body;
 
     // Validate request body
-    if (!status || !['submitted', 'approved', 'edited'].includes(status)) {
-        return res.status(400).json({ status: 'fail', message: 'Invalid status provided' });
+    if (!status || !["submitted", "approved", "edited"].includes(status)) {
+        return res
+            .status(400)
+            .json({ status: "fail", message: "Invalid status provided" });
     }
 
     try {
         const file = await fileModel.findOne({ _id: fileIdObj });
         if (!file) {
-            return res.status(404).json({ status: 'fail', message: 'File not found' });
+            return res
+                .status(404)
+                .json({ status: "fail", message: "File not found" });
         }
 
         // Update file status
@@ -493,8 +528,8 @@ const updateFileStatus = asyncHandler(async (req, res) => {
         await file.save();
 
         res.status(200).json({
-            status: 'success',
-            message: 'File status updated successfully',
+            status: "success",
+            message: "File status updated successfully",
             title,
             artcile: file.article,
             updatedStatus: file.status,
@@ -502,7 +537,9 @@ const updateFileStatus = asyncHandler(async (req, res) => {
         });
     } catch (error) {
         console.error("Error updating file status:", error);
-        return res.status(500).json({ status: 'fail', message: 'Error updating file status' });
+        return res
+            .status(500)
+            .json({ status: "fail", message: "Error updating file status" });
     }
 });
 
@@ -525,5 +562,5 @@ module.exports = {
     deleteFileFromMongoDB,
     updateFileInMongoDB,
     updateFileStatus,
-    updateFile
+    updateFile,
 };

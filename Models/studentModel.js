@@ -28,13 +28,12 @@ const userSchema = new Schema(
             default: "student",
         },
         faculty: {
-            // type: Schema.Types.ObjectId,
-            // ref: "Faculty",
-            type: String,
+            type: Schema.Types.ObjectId,
+            ref: "Faculty",
         },
         academicYear: {
-            type: String,
-            required: true,
+            type: Schema.Types.ObjectId,
+            ref: "academicYear",
         },
         termsAgreed: {
             type: Boolean,
@@ -45,7 +44,7 @@ const userSchema = new Schema(
             type: Boolean,
             required: true,
             default: false,
-        },
+        }
     },
     {
         timestamps: true,

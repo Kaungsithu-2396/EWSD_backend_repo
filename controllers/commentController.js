@@ -2,23 +2,28 @@ const commentModel = require("../Models/commentModel");
 const studentModel = require("../Models/studentModel");
 const fileModel = require("../Models/fileModel");
 const asyncHandler = require("express-async-handler");
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 const createComment = asyncHandler(async (req, resp) => {
-    const {commentOwner, comment } = req.body; 
-    const { contributionId } =  req.params; // Corrected req.params spelling
+    const { commentOwner, comment } = req.body;
+    if (!commentOwner || !comment) {
+        resp.status(400);
+        throw new Error("incomplete data providence");
+    }
+    const { contributionId } = req.params; // Corrected req.params spelling
     const contributionIdObj = new mongoose.Types.ObjectId(contributionId);
     const commentOwnerObj = new mongoose.Types.ObjectId(commentOwner);
+
     let contribution = await fileModel.findById(contributionIdObj);
-    let user = await studentModel.findById(commentOwnerObj);
-    console.log("contribution",contribution);
+    let user = await studentModel.findById(commentOwner);
+
     try {
         // Create a new comment instance
         const newComment = new commentModel({
             contribution: contribution.article,
             contributor: contribution.documentOwner,
             commentOwner: user.name,
-            comment: comment,
-            createdAt: new Date() // Added createdAt field with current date
+            comment,
+            createdAt: new Date(), // Added createdAt field with current date
         });
 
         // Save the new comment to the database
@@ -28,14 +33,14 @@ const createComment = asyncHandler(async (req, resp) => {
             data,
             success: true,
         });
-
     } catch (error) {
         // Handle any errors that occur during the process
         console.error("Error creating comment:", error);
-        resp.status(500).send({ // Sending a proper error response
+        resp.status(500).send({
+            // Sending a proper error response
             message: "Error creating comment",
             success: false,
-            error: error.message // Sending error message for debugging
+            error: error.message, // Sending error message for debugging
         });
     }
 });
@@ -61,7 +66,7 @@ const editComment = async (req, res) => {
         res.status(200).json({
             message: "Comment updated successfully",
             data: updatedComment.comment,
-            updatedAt:new Date(),
+            updatedAt: new Date(),
         });
     } catch (error) {
         console.error("Error updating comment:", error);
@@ -92,7 +97,7 @@ const getAllComments = asyncHandler(async (req, res) => {
 const getOneComment = asyncHandler(async (req, res) => {
     const { commentId } = req.params;
     const commentIdObj = new mongoose.Types.ObjectId(commentId);
-    
+
     try {
         // Find the comment by commentId
         const comment = await commentModel.findById(commentIdObj);
@@ -120,7 +125,5 @@ module.exports = {
     createComment,
     editComment,
     getAllComments,
-    getOneComment
+    getOneComment,
 };
-
-

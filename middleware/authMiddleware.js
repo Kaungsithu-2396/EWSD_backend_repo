@@ -17,6 +17,9 @@ const verifiedAuthorizedUser = asyncHandler(async (req, resp, next) => {
             resp.status(401);
             throw new Error("unauthorized user");
         }
+    } else {
+        resp.status(401);
+        throw new Error("Invalid token");
     }
 
     next();
