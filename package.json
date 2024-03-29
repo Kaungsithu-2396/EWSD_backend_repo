@@ -1,0 +1,31 @@
+{
+    "name": "backend_ewsd",
+    "version": "1.0.0",
+    "description": "Here is the backend repository for EWSD backend project",
+    "main": "server.js",
+    "engines": {
+        "node": "20.x"
+    },
+    "scripts": {
+        "start": "nodemon server.js"
+    },
+    "author": "Group_9_devs",
+    "license": "ISC",
+    "dependencies": {
+        "bcrypt": "^5.1.1",
+        "cors": "^2.8.5",
+        "crypto": "^1.0.1",
+        "dotenv": "^16.4.2",
+        "express": "^4.18.3",
+        "express-async-handler": "^1.2.0",
+        "jsonwebtoken": "^9.0.2",
+        "jszip": "^3.10.1",
+        "mongoose": "^8.2.2",
+        "multer": "^1.4.5-lts.1",
+        "nodemailer": "^6.9.11",
+        "random-token-generator": "^1.0.2"
+    },
+    "devDependencies": {
+        "nodemon": "^3.0.3"
+    }
+}
