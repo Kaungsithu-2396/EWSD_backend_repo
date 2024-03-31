@@ -13,6 +13,7 @@ const {
     uploadFile,
     uploadFileToMongoDB,
     getAllFiles,
+    getFileById,
     downloadFileFromMongoDB,
     updateFileInMongoDB,
     updateFile,
@@ -30,7 +31,8 @@ studentRouter.route("/user/:id/forgot-password/:token").post(resetPassword);
 studentRouter
     .route("/file/uploadFile")
     .post(verifiedAuthorizedUser, uploadFile, uploadFileToMongoDB);
-studentRouter.route("/file/getAllFiles").get(getAllFiles);
+studentRouter.route("/file/getAllFiles").get(verifiedAuthorizedUser,getAllFiles);
+studentRouter.route("/file/getFileById/:fileId").get(verifiedAuthorizedUser,getFileById);
 studentRouter
     .route("/file/download")
     .post(
@@ -40,7 +42,7 @@ studentRouter
     );
 studentRouter
     .route("/file/update/:fileId")
-    .patch(updateFile, updateFileInMongoDB);
+    .patch( verifiedAuthorizedUser,updateFile, updateFileInMongoDB);
 studentRouter.route("/file/updateFileStatus/:fileId").patch(updateFileStatus);
 studentRouter.route("/file/delete/:fileId").delete(deleteFileFromMongoDB);
 

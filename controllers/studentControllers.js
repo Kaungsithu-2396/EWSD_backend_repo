@@ -243,6 +243,7 @@ const uploadFileToMongoDB = asyncHandler(async (req, resp) => {
       article: file.originalname,
       fileType: file.mimetype,
       documentOwner: req.student.id,
+      faculty:"66028274c8ecd2b903bc0b6c",
       createdAt: new Date(),
     });
 
@@ -267,43 +268,106 @@ const uploadFileToMongoDB = asyncHandler(async (req, resp) => {
   });
 });
 
+// const getAllFiles = asyncHandler(async (req, res) => {
+//   try {
+//     // Constructing query
+//     const query = fileModel.find().populate({
+//       path: 'documentOwner',
+//       select: 'name role -_id', // Select the fields you want from the user document
+//     });
+//     // Counting
+//     const totalDocuments = await fileModel.countDocuments();
+//     // Executing query
+//     const files = await query.exec();
+//     const filesWithOwnerNames = files.map(file => ({
+//       ...file.toObject(),
+//       documentOwner: file.documentOwner.name,
+//       role:file.documentOwner.role
+//     }));
+//     res.status(200).json({
+//       success: true,
+//       data: filesWithOwnerNames,
+//       totalDocuments,
+//     });
+//   } catch (error) {
+//     console.error(error); // Log the error for debugging
+//     res.status(500).json({
+//       success: false,
+//       error: error.message, // Return the error message to the client
+//     });
+//   }
+// });
 const getAllFiles = asyncHandler(async (req, res) => {
   try {
-    // Extracting query parameters
-    const { count, perPage } = req.query;
+    const userRole = req.student.role;
 
-    // Parsing count and perPage as integers with default values
-    const parsedCount = parseInt(count) || 0;
-    const parsedPerPage = parseInt(perPage) || 10; // Defaulting to 10 documents per page
-
-    // Constructing query
-    const query = fileModel.find().select("-fileType");
-    // Counting
-    const totalDocuments = await fileModel.countDocuments();
-    // Pagination
-    const totalPages = Math.ceil(totalDocuments / parsedPerPage);
-    const currentPage = Math.min(
-      Math.ceil(parsedCount / parsedPerPage),
-      totalPages
-    );
-    let startIndex = (currentPage - 1) * parsedPerPage;
-
-    // Ensure startIndex is non-negative
-    if (startIndex < 0) {
-      startIndex = 0;
+    let query = fileModel.find().populate({
+      path: 'documentOwner',
+      select: 'name _id', // Select the fields you want from the user document
+    });
+    const userFaculty = req.student.faculty; // Assuming the faculty is stored in req.user.faculty
+      console.log("Role:",userRole);
+    // If the user role is marketing coordinator, filter files based on the faculty
+    if (userRole === 'marketing coordinator') {
+      const userFaculty = req.student.faculty; // Assuming the faculty is stored in req.user.faculty
+      console.log("Faculty:",userFaculty);
+      query = query.where('faculty').equals(userFaculty);
     }
-
-    query.limit(parsedPerPage).skip(startIndex);
 
     // Executing query
     const files = await query.exec();
-
+    console.log("Files",files);
+    const filesWithOwnerNames = files.map(file => ({
+      ...file.toObject(),
+      documentOwner: file.documentOwner.name,
+      documentOwnerId : file.documentOwner._id,
+      commentId: file.commentId || "",
+      comments: file.comments || "",
+    }));
+    console.log("filesWithOwnerNames",filesWithOwnerNames);
     res.status(200).json({
       success: true,
-      data: files,
-      currentPage,
-      totalPages,
-      totalDocuments,
+      data: filesWithOwnerNames,
+      totalDocuments: files.length, // Use files.length instead of totalDocuments for the count
+    });
+  } catch (error) {
+    console.error(error); // Log the error for debugging
+    res.status(500).json({
+      success: false,
+      error: error.message, // Return the error message to the client
+    });
+  }
+});
+const getFileById = asyncHandler(async (req, res) => {
+  try {
+    const { fileId } = req.params;
+    console.log("fileId",fileId);
+    const fileIdObj = new mongoose.Types.ObjectId(fileId);
+    const userRole = req.student.role;
+    let query = fileModel.findById(fileIdObj).populate({
+      path: 'documentOwner',
+      select: 'name role -_id', // Select the fields you want from the user document
+    });
+    // If the user role is marketing coordinator, add filter based on faculty
+    if (userRole === 'marketing coordinator') {
+      const userFaculty = req.student.faculty;
+      query = query.where('faculty').equals(userFaculty);
+    }
+    const file = await query.exec();
+    if (!file) {
+      return res.status(404).json({
+        success: false,
+        error: 'File not found',
+      });
+    }
+    const fileWithOwnerName = {
+      ...file.toObject(),
+      documentOwner: file.documentOwner.name,
+      role: file.documentOwner.role
+    };
+    res.status(200).json({
+      success: true,
+      data: fileWithOwnerName,
     });
   } catch (error) {
     console.error(error); // Log the error for debugging
@@ -315,6 +379,14 @@ const getAllFiles = asyncHandler(async (req, res) => {
 });
 // download multiple files
 const downloadFileFromMongoDB = asyncHandler(async (req, res) => {
+  const userRole = req.student.role; // Extract user role from the request
+    // Check if user role is Marketing Manager
+    if (userRole !== 'marketing manager') {
+      return res.status(403).json({
+        status: "fail",
+        message: "Unauthorized. Only Marketing Managers are allowed to download files.",
+      });
+    }
   const { fileIds } = req.body; // Extract fileIds from request body
   console.log("fileIds:", fileIds);
   if (!fileIds || !Array.isArray(fileIds) || fileIds.length === 0) {
@@ -414,6 +486,13 @@ const downloadFileFromMongoDB = asyncHandler(async (req, res) => {
 // });
 const updateFile = upload.array("files", 3);
 const updateFileInMongoDB = asyncHandler(async (req, resp) => {
+  const userRole = req.student.role;
+  if (userRole !== 'marketing coordinator' && userRole !=='student') {
+    return resp.status(403).json({
+      status: "fail",
+      message: "Unauthorized. Only Marketing Coordinator are allowed to update files.",
+    });
+  }
   const { title, termsAgreed } = req.body; // Get title and termsAgreed from the request body
   const { fileId } = req.params;
   const fileIdObj = new mongoose.Types.ObjectId(fileId);
@@ -553,6 +632,7 @@ module.exports = {
   uploadFile,
   uploadFileToMongoDB,
   getAllFiles,
+  getFileById,
   downloadFileFromMongoDB,
   deleteFileFromMongoDB,
   updateFileInMongoDB,
