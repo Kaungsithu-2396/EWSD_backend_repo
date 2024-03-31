@@ -27,9 +27,21 @@ const FileSchema = new Schema({
         default: Date.now,
         required: false,
     },
+    commentId: {
+        type: Schema.Types.ObjectId,
+        ref:"Comment", 
+    },
+    comments: {
+        type: String,
+        required: false,
+    },
     documentOwner: {
         type: Schema.Types.ObjectId,
         ref: "User",
+    },
+    faculty :{
+        type: Schema.Types.ObjectId,
+        required: false,
     },
     status: {
         type: String,
