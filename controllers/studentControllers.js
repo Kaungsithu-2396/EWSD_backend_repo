@@ -377,6 +377,33 @@ const getFileById = asyncHandler(async (req, res) => {
     });
   }
 });
+const getFileViewer = asyncHandler(async (req, res) => {
+  try {
+    const { fileId } = req.params;
+    console.log("fileId",fileId);
+    const fileIdObj = new mongoose.Types.ObjectId(fileId);
+    const file = await fileModel.findById(fileIdObj);
+    if (!file) {
+      return res.status(404).json({
+        success: false,
+        error: 'File not found',
+      });
+    }
+    file.views += 1;
+    const data = await file.save();
+    
+    res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    console.error(error); // Log the error for debugging
+    res.status(500).json({
+      success: false,
+      error: error.message, // Return the error message to the client
+    });
+  }
+});
 // download multiple files
 const downloadFileFromMongoDB = asyncHandler(async (req, res) => {
   const userRole = req.student.role; // Extract user role from the request
@@ -632,6 +659,7 @@ module.exports = {
   uploadFile,
   uploadFileToMongoDB,
   getAllFiles,
+  getFileViewer,
   getFileById,
   downloadFileFromMongoDB,
   deleteFileFromMongoDB,
