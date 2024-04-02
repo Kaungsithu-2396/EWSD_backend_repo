@@ -48,6 +48,10 @@ const FileSchema = new Schema({
         enum: ["submitted", "approved", "edited"],
         default: "submitted",
     },
+    views: {
+        type: Number,
+        default: 0,
+    },
     termsAgreed: {
         type: Boolean,
         required: true,

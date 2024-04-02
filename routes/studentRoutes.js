@@ -14,6 +14,7 @@ const {
     uploadFileToMongoDB,
     getAllFiles,
     getFileById,
+    getFileViewer,
     downloadFileFromMongoDB,
     updateFileInMongoDB,
     updateFile,
@@ -33,6 +34,7 @@ studentRouter
     .post(verifiedAuthorizedUser, uploadFile, uploadFileToMongoDB);
 studentRouter.route("/file/getAllFiles").get(verifiedAuthorizedUser,getAllFiles);
 studentRouter.route("/file/getFileById/:fileId").get(verifiedAuthorizedUser,getFileById);
+studentRouter.route("/file/getFileViewer/:fileId").get(getFileViewer);
 studentRouter
     .route("/file/download")
     .post(
