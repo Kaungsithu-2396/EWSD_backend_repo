@@ -308,11 +308,16 @@ const getAllFiles = asyncHandler(async (req, res) => {
     const userFaculty = req.student.faculty; // Assuming the faculty is stored in req.user.faculty
       console.log("Role:",userRole);
     // If the user role is marketing coordinator, filter files based on the faculty
-    if (userRole === 'marketing coordinator') {
+    if (userRole === 'marketing coordinator' || userRole === 'student') {
       const userFaculty = req.student.faculty; // Assuming the faculty is stored in req.user.faculty
       console.log("Faculty:",userFaculty);
       query = query.where('faculty').equals(userFaculty);
     }
+
+    // if (userRole === 'marketing manager'){
+    //   query = query.where('status').equals('approved');
+    // }
+
 
     // Executing query
     const files = await query.exec();
@@ -323,6 +328,7 @@ const getAllFiles = asyncHandler(async (req, res) => {
       documentOwnerId : file.documentOwner._id,
       commentId: file.commentId || "",
       comments: file.comments || "",
+      faculty : file.faculty
     }));
     console.log("filesWithOwnerNames",filesWithOwnerNames);
     res.status(200).json({
@@ -462,6 +468,7 @@ const downloadFileFromMongoDB = asyncHandler(async (req, res) => {
   res.send({
     zip: zipBuffer,
   });
+
 });
 // update File
 // const updateFileInMongoDB = asyncHandler(async (req, res) => {
