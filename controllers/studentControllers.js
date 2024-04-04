@@ -314,9 +314,9 @@ const getAllFiles = asyncHandler(async (req, res) => {
       query = query.where('faculty').equals(userFaculty);
     }
 
-    // if (userRole === 'marketing manager'){
-    //   query = query.where('status').equals('approved');
-    // }
+    if (userRole === 'marketing manager'){
+      query = query.where('status').equals('approved');
+    }
 
 
     // Executing query
@@ -441,7 +441,7 @@ const downloadFileFromMongoDB = asyncHandler(async (req, res) => {
     }
 
     // Retrieve file data from MongoDB document
-    const fileName = file.fileName;
+    const fileName = file.article;
     const fileBuffer = file.fileBuffer;
 
     return { fileName, fileBuffer };
@@ -456,18 +456,15 @@ const downloadFileFromMongoDB = asyncHandler(async (req, res) => {
   files.forEach(({ fileName, fileBuffer }) => {
     zip.file(fileName, fileBuffer);
   });
-  const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
-
-  // Set response headers for zip file download
+  const zipStream = zip.generateNodeStream({ type: 'nodebuffer', streamFiles: true });
+  // Set response headers for file download
   res.set({
-    "Content-Type": "application/zip",
-    "Content-Disposition": "attachment; filename=files.zip",
+    'Content-Type': 'application/zip',
+    'Content-Disposition': 'attachment; filename=download.zip',
   });
 
-  // Send zip file data as response
-  res.send({
-    zip: zipBuffer,
-  });
+  // Pipe the zip stream to the response
+  zipStream.pipe(res);
 
 });
 // update File
