@@ -202,26 +202,21 @@ const verifyEmail = asyncHandler(async (req, resp) => {
 //@desc Upload files
 //@route POST /api/v1/upload-file
 //@access Private
-const uploadFile = upload.array("files", 3);
+
 const uploadFileToMongoDB = asyncHandler(async (req, resp) => {
-  const { title, termsAgreed } = req.body; // Get other relevant data from the request body
+  const { title, termsAgreed, files } = req.body; // Get other relevant data from the request body
 
   // console.log("req.files:", req.files);
 
-  if (!req.files || req.files.length === 0) {
+  if (!files || files.length === 0) {
     resp.status(400);
     throw new Error("No files uploaded");
   }
 
   const uploadedFiles = [];
 
-  for (let i = 0; i < req.files.length; i++) {
-    const file = req.files[i];
-
-    // Process each file
-    file.originalname = Buffer.from(file.originalname, "latin1").toString(
-      "utf-8"
-    );
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
 
     if (!title) {
       resp.status(400);
@@ -232,23 +227,22 @@ const uploadFileToMongoDB = asyncHandler(async (req, resp) => {
       resp.status(400);
       throw new Error("You must agree to the terms before uploading files");
     }
-
-    const fileBuffer = file.buffer; // File data in memory
-
+    console.log("coming inside", req.student);
     // Create a new instance of file model and save it to MongoDB
     const newFile = await fileModel.create({
       title,
-      fileBuffer,
+      fileBuffer: file.file_url,
       termsAgreed,
-      article: file.originalname,
-      fileType: file.mimetype,
+      article: file.name,
+      fileType: file.type,
       documentOwner: req.student.id,
-      faculty:"66028274c8ecd2b903bc0b6c",
+      faculty: req.student.faculty,
       createdAt: new Date(),
     });
-
+    console.log("done");
     uploadedFiles.push(newFile);
   }
+  console.log(uploadedFiles);
   //send mail to mcr under the same faculty
   const respectiveMCR = await studentModel.find({
     role: "marketing coordinator",
@@ -302,35 +296,37 @@ const getAllFiles = asyncHandler(async (req, res) => {
     const userRole = req.student.role;
 
     let query = fileModel.find().populate({
-      path: 'documentOwner',
-      select: 'name _id', // Select the fields you want from the user document
+      path: "documentOwner",
+      select: "name _id", // Select the fields you want from the user document
     });
-    const userFaculty = req.student.faculty; // Assuming the faculty is stored in req.user.faculty
-      console.log("Role:",userRole);
+    console.log("Role:", userRole);
     // If the user role is marketing coordinator, filter files based on the faculty
-    if (userRole === 'marketing coordinator' || userRole === 'student') {
+    if (
+      userRole === "marketing coordinator" ||
+      userRole === "student" ||
+      userRole === "guest"
+    ) {
       const userFaculty = req.student.faculty; // Assuming the faculty is stored in req.user.faculty
-      console.log("Faculty:",userFaculty);
-      query = query.where('faculty').equals(userFaculty);
+      console.log("Faculty:", userFaculty);
+      query = query.where("faculty").equals(userFaculty);
     }
 
-    if (userRole === 'marketing manager'){
-      query = query.where('status').equals('approved');
+    if (userRole === "marketing manager") {
+      query = query.where("status").equals("approved");
     }
-
 
     // Executing query
     const files = await query.exec();
-    console.log("Files",files);
-    const filesWithOwnerNames = files.map(file => ({
+
+    const filesWithOwnerNames = files.map((file) => ({
       ...file.toObject(),
       documentOwner: file.documentOwner.name,
-      documentOwnerId : file.documentOwner._id,
+      documentOwnerId: file.documentOwner._id,
       commentId: file.commentId || "",
       comments: file.comments || "",
-      faculty : file.faculty
+      faculty: file.faculty,
     }));
-    console.log("filesWithOwnerNames",filesWithOwnerNames);
+    console.log("filesWithOwnerNames", filesWithOwnerNames);
     res.status(200).json({
       success: true,
       data: filesWithOwnerNames,
@@ -347,29 +343,29 @@ const getAllFiles = asyncHandler(async (req, res) => {
 const getFileById = asyncHandler(async (req, res) => {
   try {
     const { fileId } = req.params;
-    console.log("fileId",fileId);
+    console.log("fileId", fileId);
     const fileIdObj = new mongoose.Types.ObjectId(fileId);
     const userRole = req.student.role;
     let query = fileModel.findById(fileIdObj).populate({
-      path: 'documentOwner',
-      select: 'name role -_id', // Select the fields you want from the user document
+      path: "documentOwner",
+      select: "name role -_id", // Select the fields you want from the user document
     });
     // If the user role is marketing coordinator, add filter based on faculty
-    if (userRole === 'marketing coordinator') {
+    if (userRole === "marketing coordinator") {
       const userFaculty = req.student.faculty;
-      query = query.where('faculty').equals(userFaculty);
+      query = query.where("faculty").equals(userFaculty);
     }
     const file = await query.exec();
     if (!file) {
       return res.status(404).json({
         success: false,
-        error: 'File not found',
+        error: "File not found",
       });
     }
     const fileWithOwnerName = {
       ...file.toObject(),
       documentOwner: file.documentOwner.name,
-      role: file.documentOwner.role
+      role: file.documentOwner.role,
     };
     res.status(200).json({
       success: true,
@@ -386,21 +382,27 @@ const getFileById = asyncHandler(async (req, res) => {
 const getFileViewer = asyncHandler(async (req, res) => {
   try {
     const { fileId } = req.params;
-    console.log("fileId",fileId);
+    console.log("fileId", fileId);
     const fileIdObj = new mongoose.Types.ObjectId(fileId);
     const file = await fileModel.findById(fileIdObj);
+
     if (!file) {
       return res.status(404).json({
         success: false,
-        error: 'File not found',
+        error: "File not found",
       });
     }
+    const userProfile = await studentModel.findById(file.documentOwner);
+
     file.views += 1;
-    const data = await file.save();
-    
+    let data = await file.save();
+    const updateData = {
+      data: data,
+      author: userProfile?.name || "-",
+    };
     res.status(200).json({
       success: true,
-      data,
+      updateData,
     });
   } catch (error) {
     console.error(error); // Log the error for debugging
@@ -413,13 +415,14 @@ const getFileViewer = asyncHandler(async (req, res) => {
 // download multiple files
 const downloadFileFromMongoDB = asyncHandler(async (req, res) => {
   const userRole = req.student.role; // Extract user role from the request
-    // Check if user role is Marketing Manager
-    if (userRole !== 'marketing manager') {
-      return res.status(403).json({
-        status: "fail",
-        message: "Unauthorized. Only Marketing Managers are allowed to download files.",
-      });
-    }
+  // Check if user role is Marketing Manager
+  if (userRole !== "marketing manager") {
+    return res.status(403).json({
+      status: "fail",
+      message:
+        "Unauthorized. Only Marketing Managers are allowed to download files.",
+    });
+  }
   const { fileIds } = req.body; // Extract fileIds from request body
   console.log("fileIds:", fileIds);
   if (!fileIds || !Array.isArray(fileIds) || fileIds.length === 0) {
@@ -456,16 +459,18 @@ const downloadFileFromMongoDB = asyncHandler(async (req, res) => {
   files.forEach(({ fileName, fileBuffer }) => {
     zip.file(fileName, fileBuffer);
   });
-  const zipStream = zip.generateNodeStream({ type: 'nodebuffer', streamFiles: true });
+  const zipStream = zip.generateNodeStream({
+    type: "nodebuffer",
+    streamFiles: true,
+  });
   // Set response headers for file download
   res.set({
-    'Content-Type': 'application/zip',
-    'Content-Disposition': 'attachment; filename=download.zip',
+    "Content-Type": "application/zip",
+    "Content-Disposition": "attachment; filename=download.zip",
   });
 
   // Pipe the zip stream to the response
   zipStream.pipe(res);
-
 });
 // update File
 // const updateFileInMongoDB = asyncHandler(async (req, res) => {
@@ -518,10 +523,11 @@ const downloadFileFromMongoDB = asyncHandler(async (req, res) => {
 const updateFile = upload.array("files", 3);
 const updateFileInMongoDB = asyncHandler(async (req, resp) => {
   const userRole = req.student.role;
-  if (userRole !== 'marketing coordinator' && userRole !=='student') {
+  if (userRole !== "marketing coordinator" && userRole !== "student") {
     return resp.status(403).json({
       status: "fail",
-      message: "Unauthorized. Only Marketing Coordinator are allowed to update files.",
+      message:
+        "Unauthorized. Only Marketing Coordinator are allowed to update files.",
     });
   }
   const { title, termsAgreed } = req.body; // Get title and termsAgreed from the request body
@@ -660,7 +666,6 @@ module.exports = {
   verifyEmail,
   forgotPassword,
   resetPassword,
-  uploadFile,
   uploadFileToMongoDB,
   getAllFiles,
   getFileViewer,
