@@ -17,6 +17,10 @@ const FileSchema = new Schema({
     type: String,
     required: false,
   },
+  chosenAcademicYear: {
+    type: String,
+    required: false,
+  },
   createdAt: {
     type: Date,
     default: Date.now,

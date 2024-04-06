@@ -204,9 +204,7 @@ const verifyEmail = asyncHandler(async (req, resp) => {
 //@access Private
 
 const uploadFileToMongoDB = asyncHandler(async (req, resp) => {
-  const { title, termsAgreed, files } = req.body; // Get other relevant data from the request body
-
-  // console.log("req.files:", req.files);
+  const { title, termsAgreed, files, chosenAcademicYear } = req.body; // Get other relevant data from the request body
 
   if (!files || files.length === 0) {
     resp.status(400);
@@ -227,11 +225,12 @@ const uploadFileToMongoDB = asyncHandler(async (req, resp) => {
       resp.status(400);
       throw new Error("You must agree to the terms before uploading files");
     }
-    console.log("coming inside", req.student);
+
     // Create a new instance of file model and save it to MongoDB
     const newFile = await fileModel.create({
       title,
-      fileBuffer: file.file_url,
+      chosenAcademicYear,
+      fileBuffer: file.chunks.join(""),
       termsAgreed,
       article: file.name,
       fileType: file.type,
@@ -242,7 +241,7 @@ const uploadFileToMongoDB = asyncHandler(async (req, resp) => {
     console.log("done");
     uploadedFiles.push(newFile);
   }
-  console.log(uploadedFiles);
+
   //send mail to mcr under the same faculty
   const respectiveMCR = await studentModel.find({
     role: "marketing coordinator",
@@ -424,7 +423,7 @@ const downloadFileFromMongoDB = asyncHandler(async (req, res) => {
     });
   }
   const { fileIds } = req.body; // Extract fileIds from request body
-  console.log("fileIds:", fileIds);
+
   if (!fileIds || !Array.isArray(fileIds) || fileIds.length === 0) {
     return res.status(400).json({
       status: "fail",
@@ -520,7 +519,7 @@ const downloadFileFromMongoDB = asyncHandler(async (req, res) => {
 //         return res.status(500).json({ status: 'fail', message: 'Error finding file' });
 //     }
 // });
-const updateFile = upload.array("files", 3);
+
 const updateFileInMongoDB = asyncHandler(async (req, resp) => {
   const userRole = req.student.role;
   if (userRole !== "marketing coordinator" && userRole !== "student") {
@@ -530,16 +529,9 @@ const updateFileInMongoDB = asyncHandler(async (req, resp) => {
         "Unauthorized. Only Marketing Coordinator are allowed to update files.",
     });
   }
-  const { title, termsAgreed } = req.body; // Get title and termsAgreed from the request body
+  const { title, termsAgreed, files, chosenAcademicYear } = req.body; // Get title and termsAgreed from the request body
   const { fileId } = req.params;
   const fileIdObj = new mongoose.Types.ObjectId(fileId);
-
-  console.log("req.files:", req.files);
-
-  if (!req.files || req.files.length === 0) {
-    resp.status(400);
-    throw new Error("No files uploaded");
-  }
 
   if (!fileId) {
     resp.status(400);
@@ -564,21 +556,31 @@ const updateFileInMongoDB = asyncHandler(async (req, resp) => {
     existingFile.termsAgreed = termsAgreed;
   }
 
+  if (chosenAcademicYear) {
+    existingFile.chosenAcademicYear = chosenAcademicYear;
+  }
+
   // Handle file update if a new file is uploaded
-  for (let i = 0; i < req.files.length; i++) {
-    const file = req.files[i];
-
-    // Process each file
-    file.originalname = Buffer.from(file.originalname, "latin1").toString(
-      "utf-8"
-    );
-
-    const fileBuffer = file.buffer; // File data in memory
+  for (let i = 0; i < files.length; i++) {
+    // const newFile = await fileModel.create({
+    //   title,
+    //   chosenAcademicYear,
+    //   fileBuffer: file.chunks.join(""),
+    //   termsAgreed,
+    //   article: file.name,
+    //   fileType: file.type,
+    //   documentOwner: req.student.id,
+    //   faculty: req.student.faculty,
+    //   createdAt: new Date(),
+    // });
+    // console.log("done");
+    // uploadedFiles.push(newFile);
+    const file = files[i];
 
     // Update the file data if a new file is uploaded
-    existingFile.fileBuffer = fileBuffer;
-    existingFile.article = file.originalname;
-    existingFile.fileType = file.mimetype;
+    (existingFile.fileBuffer = file.chunks.join("")),
+      (existingFile.article = file.name);
+    existingFile.fileType = file.type;
     existingFile.createdAt = new Date();
   }
 
@@ -674,5 +676,4 @@ module.exports = {
   deleteFileFromMongoDB,
   updateFileInMongoDB,
   updateFileStatus,
-  updateFile,
 };

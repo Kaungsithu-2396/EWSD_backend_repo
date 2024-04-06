@@ -48,7 +48,7 @@ studentRouter
   );
 studentRouter
   .route("/file/update/:fileId")
-  .patch(verifiedAuthorizedUser, updateFile, updateFileInMongoDB);
+  .patch(verifiedAuthorizedUser, updateFileInMongoDB);
 studentRouter.route("/file/updateFileStatus/:fileId").patch(updateFileStatus);
 studentRouter.route("/file/delete/:fileId").delete(deleteFileFromMongoDB);
 
