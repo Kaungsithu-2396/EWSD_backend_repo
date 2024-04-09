@@ -30,7 +30,7 @@ studentRouter.route("/students").get(verifiedAuthorizedUser, getAllStudents);
 studentRouter.route("/user/:id/verify/:token").get(verifyEmail);
 studentRouter.route("/forgotpassword").post(forgotPassword);
 studentRouter.route("/user/:id/forgot-password/:token").post(resetPassword);
-studentRouter.route("/contributionOverview").get(contributionOverview);
+studentRouter.route("/overview/contributionOverview").get(contributionOverview);
 studentRouter
     .route("/file/uploadFile")
     .post(verifiedAuthorizedUser, uploadFileToMongoDB);

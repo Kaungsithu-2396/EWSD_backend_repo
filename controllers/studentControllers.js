@@ -688,10 +688,10 @@ const countStudentsByFacultyAndYear = (studentsData) => {
 };
 
 const contributionOverview = asyncHandler(async (req, resp) => {
-    const allFiles = await fileModel.find().select("-fileBuffer ");
+    const allFiles = await fileModel.find().select("fileBuffer");
     const transformList = [];
     const contributorList = [];
-  
+
     for (let el of allFiles) {
         const faculty = await dataMapping(el.faculty, facultyModel);
         const user = await dataMapping(el.documentOwner, studentModel);
