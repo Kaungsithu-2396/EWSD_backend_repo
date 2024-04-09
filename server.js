@@ -13,8 +13,11 @@ const cors = require("cors");
 connectDB();
 app.use(cors());
 app.use(express.json());
+//deploy testing process
+app.get("/", (req, resp) => {
+    resp.send("Server is running");
+});
 app.use("/api/v1", studentRouter);
-
 app.use("/api/v1/comment", commentRouter);
 app.use("/api/v1/academicYear", academicRouter);
 app.use("/api/v1/faculty", facultyRoutes);
@@ -25,3 +28,4 @@ app.use(errorHandler);
 app.listen(PORT, () => {
     console.log(`app starts running on ${PORT}`);
 });
+module.exports = app;

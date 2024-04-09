@@ -9,6 +9,7 @@ const crypto = require("crypto");
 const bcrypt = require("bcrypt");
 const rtg = require("random-token-generator");
 const multer = require("multer");
+const academicYearModel = require("../Models/academicYearModel");
 
 const storage = multer.memoryStorage();
 const upload = multer({
@@ -543,7 +544,27 @@ const updateFileStatus = asyncHandler(async (req, res) => {
             .json({ status: "fail", message: "Error updating file status" });
     }
 });
-
+// const dataMapping = asyncHandler(async (id) => {
+//     if (!id) {
+//         throw new Error("no id found");
+//     }
+//     const objectId = new mongoose.Types.ObjectId(id);
+//     const getAcademicYearAsId = await academicYearModel.findById(objectId);
+//     if (!getAcademicYearAsId) {
+//         throw new Error("invalid id");
+//     }
+//     return getAcademicYearAsId.year;
+// });
+// const contributionOverview = asyncHandler(async () => {
+//     const allFiles = await fileModel.find().select("-fileBuffer ");
+//     // // const allId = allFiles.map((el) => ({
+//     // //     id: el.id,
+//     // //     academicYear: el.chosenAcademicYear,
+//     // // }));
+//     // const allId = allFiles.map((el) => el.title);
+//     console.log(allFiles[0]);
+// });
+// contributionOverview();
 const generateToken = (id, role) => {
     return jwt.sign({ id, role }, process.env.SECRET_KEY, {
         expiresIn: "2d",
