@@ -13,11 +13,14 @@ const {
     uploadFile,
     uploadFileToMongoDB,
     getAllFiles,
+    getFileById,
+    getFileViewer,
     downloadFileFromMongoDB,
     updateFileInMongoDB,
     updateFile,
     updateFileStatus,
     deleteFileFromMongoDB,
+    contributionOverview,
 } = require("../controllers/studentControllers");
 const getSpecificData = require("../controllers/profileController");
 studentRouter.route("/profile/me").get(getSpecificData);
@@ -27,10 +30,17 @@ studentRouter.route("/students").get(verifiedAuthorizedUser, getAllStudents);
 studentRouter.route("/user/:id/verify/:token").get(verifyEmail);
 studentRouter.route("/forgotpassword").post(forgotPassword);
 studentRouter.route("/user/:id/forgot-password/:token").post(resetPassword);
+studentRouter.route("/contributionOverview").get(contributionOverview);
 studentRouter
     .route("/file/uploadFile")
-    .post(verifiedAuthorizedUser, uploadFile, uploadFileToMongoDB);
-studentRouter.route("/file/getAllFiles").get(getAllFiles);
+    .post(verifiedAuthorizedUser, uploadFileToMongoDB);
+studentRouter
+    .route("/file/getAllFiles")
+    .get(verifiedAuthorizedUser, getAllFiles);
+studentRouter
+    .route("/file/getFileById/:fileId")
+    .get(verifiedAuthorizedUser, getFileById);
+studentRouter.route("/file/getFileViewer/:fileId").get(getFileViewer);
 studentRouter
     .route("/file/download")
     .post(
@@ -40,7 +50,7 @@ studentRouter
     );
 studentRouter
     .route("/file/update/:fileId")
-    .patch(updateFile, updateFileInMongoDB);
+    .patch(verifiedAuthorizedUser, updateFileInMongoDB);
 studentRouter.route("/file/updateFileStatus/:fileId").patch(updateFileStatus);
 studentRouter.route("/file/delete/:fileId").delete(deleteFileFromMongoDB);
 

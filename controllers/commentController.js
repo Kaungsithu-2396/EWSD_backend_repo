@@ -5,6 +5,7 @@ const asyncHandler = require("express-async-handler");
 const mongoose = require("mongoose");
 const createComment = asyncHandler(async (req, resp) => {
     const { commentOwner, comment } = req.body;
+    console.log("body",req.body);
     if (!commentOwner || !comment) {
         resp.status(400);
         throw new Error("incomplete data providence");
@@ -19,18 +20,25 @@ const createComment = asyncHandler(async (req, resp) => {
     try {
         // Create a new comment instance
         const newComment = new commentModel({
-            contribution: contribution.article,
+            contribution: contribution._id,
             contributor: contribution.documentOwner,
             commentOwner: user.name,
             comment,
             createdAt: new Date(), // Added createdAt field with current date
         });
-
+        const savedComment = await newComment.save();
+        console.log("Firstcmt",savedComment);
         // Save the new comment to the database
-        const data = await newComment.save();
+        contribution.comments = comment,
+        contribution.commentId = savedComment._id,
+        
+        // contribution.cmtId +=`${savedComment._id}`;
+        console.log("savecmt",savedComment._id);
+        await contribution.save();
+        
         resp.status(201).send({
             message: "Comment created successfully",
-            data,
+            savedComment,
             success: true,
         });
     } catch (error) {
@@ -47,19 +55,24 @@ const createComment = asyncHandler(async (req, resp) => {
 const editComment = async (req, res) => {
     const { commentId } = req.params;
     const commentIdObj = new mongoose.Types.ObjectId(commentId);
-    const { comment } = req.body;
-
+    const { comment,contributionId } = req.body;
+    const contributionIdObj = new mongoose.Types.ObjectId(contributionId);
+    let contribution = await fileModel.findById(contributionIdObj);
+    console.log("Contribution",contribution);
     try {
         // Find the comment by commentId
         let existingComment = await commentModel.findById(commentIdObj);
-
+        console.log("Orginal Comment",existingComment);
         if (!existingComment) {
             return res.status(404).json({ message: "Comment not found" });
         }
 
         // Update the comment with new text
         existingComment.comment = comment;
-
+        contribution.comments = comment,
+        contribution.commentId = existingComment._id,
+        await contribution.save();
+        console.log("Existing cmt", existingComment);
         // Save the updated comment to the database
         const updatedComment = await existingComment.save();
 
