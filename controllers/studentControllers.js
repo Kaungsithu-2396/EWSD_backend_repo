@@ -36,9 +36,17 @@ const getAllStudents = asyncHandler(async (req, resp) => {
 //@route POST /api/v1/register
 //@access Public
 const registerStudent = asyncHandler(async (req, resp) => {
-  const { name, email, password, role, faculty, academicYear, termsAgreed } =
-    req.body;
-  console.log(req.body);
+  const {
+    name,
+    email,
+    password,
+    role,
+    faculty,
+    academicYear,
+    termsAgreed,
+    from,
+  } = req.body;
+
   if (!name || !email || !password || !faculty || !academicYear) {
     resp.status(400);
     throw new Error("fail to provide the complete data");
@@ -58,6 +66,7 @@ const registerStudent = asyncHandler(async (req, resp) => {
     role,
     faculty,
     academicYear,
+    verified: from === "admin" || false,
     termsAgreed,
   });
   const token = await tokenModel.create({
