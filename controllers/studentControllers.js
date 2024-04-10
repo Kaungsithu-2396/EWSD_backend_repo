@@ -9,6 +9,8 @@ const crypto = require("crypto");
 const bcrypt = require("bcrypt");
 const rtg = require("random-token-generator");
 const multer = require("multer");
+const academicYearModel = require("../Models/academicYearModel");
+const facultyModel = require("../Models/facultyModel");
 
 const storage = multer.memoryStorage();
 const upload = multer({
@@ -664,6 +666,65 @@ const updateFileStatus = asyncHandler(async (req, res) => {
       .json({ status: "fail", message: "Error updating file status" });
   }
 });
+const dataMapping = asyncHandler(async (id, modelName) => {
+  const objectId = typeof id === "string" && new mongoose.Types.ObjectId(id);
+  const getpropertyAsId = await modelName.findById(id);
+
+  if (!getpropertyAsId) {
+    throw new Error(`${id} is invalid`);
+  }
+  // const { year, name } = getpropertyAsId;
+  return getpropertyAsId;
+});
+
+const countStudentsByFacultyAndYear = (studentsData) => {
+  return studentsData.reduce((acc, { faculty, academicYear }) => {
+    if (!acc[faculty]) {
+      acc[faculty] = {};
+    }
+    if (!acc[faculty][academicYear]) {
+      acc[faculty][academicYear] = 0;
+    }
+    acc[faculty][academicYear]++;
+    return acc;
+  }, {});
+};
+
+const contributionOverview = asyncHandler(async (req, resp) => {
+  const allFiles = await fileModel.find().select("fileBuffer");
+  const transformList = [];
+  const contributorList = [];
+
+  for (let el of allFiles) {
+    const faculty = await dataMapping(el.faculty, facultyModel);
+    const user = await dataMapping(el.documentOwner, studentModel);
+    const academicYear = await dataMapping(
+      el.chosenAcademicYear,
+      academicYearModel
+    );
+
+    transformList.push({
+      id: el.id,
+      user: user.name,
+      academicYear: academicYear.year,
+      faculty: faculty.name,
+    });
+  }
+
+  const contributor = countStudentsByFacultyAndYear(transformList);
+  for (const [key, value] of Object.entries(contributor)) {
+    const [key_1, value_1] = Object.entries(value);
+    contributorList.push({
+      faculty: key,
+      academicYear: key_1[0],
+      count: key_1[1],
+    });
+  }
+  resp.status(200).send({
+    contribution: transformList,
+    contributor: contributorList,
+  });
+});
 
 const generateToken = (id, role) => {
   return jwt.sign({ id, role }, process.env.SECRET_KEY, {
@@ -685,4 +746,5 @@ module.exports = {
   deleteFileFromMongoDB,
   updateFileInMongoDB,
   updateFileStatus,
+  contributionOverview,
 };

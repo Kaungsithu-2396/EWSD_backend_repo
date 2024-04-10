@@ -7,7 +7,8 @@
         "node": "20.x"
     },
     "scripts": {
-        "start": "nodemon server.js"
+        "start": "nodemon server.js",
+        "vercel-build":"echo hello"
     },
     "author": "Group_9_devs",
     "license": "ISC",
