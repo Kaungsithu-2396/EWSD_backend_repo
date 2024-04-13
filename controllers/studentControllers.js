@@ -40,7 +40,7 @@ const getAllStudents = asyncHandler(async (req, resp) => {
 const registerStudent = asyncHandler(async (req, resp) => {
     const { name, email, password, role, faculty, academicYear, termsAgreed } =
         req.body;
-    console.log(req.body);
+  
     if (!name || !email || !password || !faculty || !academicYear) {
         resp.status(400);
         throw new Error("fail to provide the complete data");
@@ -387,7 +387,7 @@ const getFileById = asyncHandler(async (req, res) => {
 const getFileViewer = asyncHandler(async (req, res) => {
     try {
         const { fileId } = req.params;
-        console.log("fileId", fileId);
+        
         const fileIdObj = new mongoose.Types.ObjectId(fileId);
         const file = await fileModel.findById(fileIdObj);
 
@@ -688,13 +688,14 @@ const countStudentsByFacultyAndYear = (studentsData) => {
 };
 
 const contributionOverview = asyncHandler(async (req, resp) => {
-    const allFiles = await fileModel.find().select("fileBuffer");
+    const allFiles = await fileModel.find().select("-fileBuffer");
     const transformList = [];
     const contributorList = [];
 
     for (let el of allFiles) {
         const faculty = await dataMapping(el.faculty, facultyModel);
         const user = await dataMapping(el.documentOwner, studentModel);
+
         const academicYear = await dataMapping(
             el.chosenAcademicYear,
             academicYearModel
