@@ -40,7 +40,7 @@ const getAllStudents = asyncHandler(async (req, resp) => {
 const registerStudent = asyncHandler(async (req, resp) => {
     const { name, email, password, role, faculty, academicYear, termsAgreed } =
         req.body;
-  
+
     if (!name || !email || !password || !faculty || !academicYear) {
         resp.status(400);
         throw new Error("fail to provide the complete data");
@@ -387,7 +387,7 @@ const getFileById = asyncHandler(async (req, res) => {
 const getFileViewer = asyncHandler(async (req, res) => {
     try {
         const { fileId } = req.params;
-        
+
         const fileIdObj = new mongoose.Types.ObjectId(fileId);
         const file = await fileModel.findById(fileIdObj);
 
@@ -723,13 +723,30 @@ const contributionOverview = asyncHandler(async (req, resp) => {
         contributor: contributorList,
     });
 });
+const countOfUserAsType = asyncHandler(async (req, resp) => {
+    const user = await studentModel.find();
+    const coll = {};
+    const result = [];
+    user.forEach((el) => (coll[el.role] = (coll[el.role] || 0) + 1));
 
+    for (let [key, value] of Object.entries(coll)) {
+        result.push({
+            user: key,
+            count: value,
+        });
+    }
+    resp.status(200).send({
+        message: "success",
+        data: result,
+    });
+});
 const generateToken = (id, role) => {
     return jwt.sign({ id, role }, process.env.SECRET_KEY, {
         expiresIn: "2d",
     });
 };
 module.exports = {
+    countOfUserAsType,
     registerStudent,
     getAllStudents,
     loginAcc,
