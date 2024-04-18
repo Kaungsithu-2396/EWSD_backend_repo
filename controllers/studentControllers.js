@@ -392,7 +392,7 @@ const getFileById = asyncHandler(async (req, res) => {
 const getFileViewer = asyncHandler(async (req, res) => {
   try {
     const { fileId } = req.params;
-    console.log("fileId", fileId);
+
     const fileIdObj = new mongoose.Types.ObjectId(fileId);
     const file = await fileModel.findById(fileIdObj);
 
@@ -691,13 +691,14 @@ const countStudentsByFacultyAndYear = (studentsData) => {
 };
 
 const contributionOverview = asyncHandler(async (req, resp) => {
-  const allFiles = await fileModel.find().select("fileBuffer");
+  const allFiles = await fileModel.find().select("-fileBuffer");
   const transformList = [];
   const contributorList = [];
 
   for (let el of allFiles) {
     const faculty = await dataMapping(el.faculty, facultyModel);
     const user = await dataMapping(el.documentOwner, studentModel);
+
     const academicYear = await dataMapping(
       el.chosenAcademicYear,
       academicYearModel
@@ -725,13 +726,30 @@ const contributionOverview = asyncHandler(async (req, resp) => {
     contributor: contributorList,
   });
 });
+const countOfUserAsType = asyncHandler(async (req, resp) => {
+  const user = await studentModel.find();
+  const coll = {};
+  const result = [];
+  user.forEach((el) => (coll[el.role] = (coll[el.role] || 0) + 1));
 
+  for (let [key, value] of Object.entries(coll)) {
+    result.push({
+      user: key,
+      count: value,
+    });
+  }
+  resp.status(200).send({
+    message: "success",
+    data: result,
+  });
+});
 const generateToken = (id, role) => {
   return jwt.sign({ id, role }, process.env.SECRET_KEY, {
     expiresIn: "2d",
   });
 };
 module.exports = {
+  countOfUserAsType,
   registerStudent,
   getAllStudents,
   loginAcc,

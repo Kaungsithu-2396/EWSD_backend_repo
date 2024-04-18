@@ -21,6 +21,7 @@ const {
     updateFileStatus,
     deleteFileFromMongoDB,
     contributionOverview,
+    countOfUserAsType,
 } = require("../controllers/studentControllers");
 const getSpecificData = require("../controllers/profileController");
 studentRouter.route("/profile/me").get(getSpecificData);
@@ -31,6 +32,7 @@ studentRouter.route("/user/:id/verify/:token").get(verifyEmail);
 studentRouter.route("/forgotpassword").post(forgotPassword);
 studentRouter.route("/user/:id/forgot-password/:token").post(resetPassword);
 studentRouter.route("/overview/contributionOverview").get(contributionOverview);
+studentRouter.route("/users").get(countOfUserAsType);
 studentRouter
     .route("/file/uploadFile")
     .post(verifiedAuthorizedUser, uploadFileToMongoDB);
