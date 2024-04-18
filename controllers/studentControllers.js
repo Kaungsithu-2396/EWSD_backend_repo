@@ -694,6 +694,7 @@ const contributionOverview = asyncHandler(async (req, resp) => {
   const allFiles = await fileModel.find().select("-fileBuffer");
   const transformList = [];
   const contributorList = [];
+  const viewLists = [];
 
   for (let el of allFiles) {
     const faculty = await dataMapping(el.faculty, facultyModel);
@@ -710,6 +711,12 @@ const contributionOverview = asyncHandler(async (req, resp) => {
       academicYear: academicYear.year,
       faculty: faculty.name,
     });
+
+    viewLists.push({
+      id: el.id,
+      article_title: el.title,
+      count: el.views,
+    });
   }
 
   const contributor = countStudentsByFacultyAndYear(transformList);
@@ -724,23 +731,17 @@ const contributionOverview = asyncHandler(async (req, resp) => {
   resp.status(200).send({
     contribution: transformList,
     contributor: contributorList,
+    viewLists: viewLists.sort((a, b) => b.count - a.count),
   });
 });
 const countOfUserAsType = asyncHandler(async (req, resp) => {
   const user = await studentModel.find();
   const coll = {};
-  const result = [];
   user.forEach((el) => (coll[el.role] = (coll[el.role] || 0) + 1));
 
-  for (let [key, value] of Object.entries(coll)) {
-    result.push({
-      user: key,
-      count: value,
-    });
-  }
   resp.status(200).send({
     message: "success",
-    data: result,
+    data: coll,
   });
 });
 const generateToken = (id, role) => {
