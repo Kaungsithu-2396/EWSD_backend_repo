@@ -261,10 +261,13 @@ const uploadFileToMongoDB = asyncHandler(async (req, resp) => {
     faculty: req.student.faculty,
   });
   if (uploadedFiles.length > 0) {
-    await sendMailtoClient(
-      respectiveMCR[0].email,
-      `Document submited by ${req.student.name}`
-    );
+    respectiveMCR.forEach(async (MCR) => {
+      await sendMailtoClient(
+        MCR.email,
+        `Document submited by ${req.student.name}`,
+        "The document is submitted. Please check and approve or comment the docuemnt."
+      );
+    });
   }
 
   resp.status(201).send({
