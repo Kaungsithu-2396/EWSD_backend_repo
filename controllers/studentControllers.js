@@ -11,6 +11,8 @@ const rtg = require("random-token-generator");
 const multer = require("multer");
 const academicYearModel = require("../Models/academicYearModel");
 const facultyModel = require("../Models/facultyModel");
+const dateSettingModel = require("../Models/dateSettingModel");
+const ObjectId = require("mongodb").ObjectId;
 
 const storage = multer.memoryStorage();
 const upload = multer({
@@ -309,16 +311,15 @@ const getAllFiles = asyncHandler(async (req, res) => {
       path: "documentOwner",
       select: "name _id", // Select the fields you want from the user document
     });
-    console.log("Role:", userRole);
     // If the user role is marketing coordinator, filter files based on the faculty
-    if (
-      userRole === "marketing coordinator" ||
-      userRole === "student" ||
-      userRole === "guest"
-    ) {
+    if (userRole === "marketing coordinator" || userRole === "guest") {
       const userFaculty = req.student.faculty; // Assuming the faculty is stored in req.user.faculty
-      console.log("Faculty:", userFaculty);
       query = query.where("faculty").equals(userFaculty);
+    }
+
+    if (userRole === "student") {
+      const documentOwner = req.student._id;
+      query = query.where("documentOwner").equals(documentOwner);
     }
 
     if (userRole === "marketing manager") {
@@ -700,9 +701,10 @@ const contributionOverview = asyncHandler(async (req, resp) => {
     const faculty = await dataMapping(el.faculty, facultyModel);
     const user = await dataMapping(el.documentOwner, studentModel);
 
-    const academicYear = await dataMapping(
-      el.chosenAcademicYear,
-      academicYearModel
+    const objectId = new ObjectId(el.chosenAcademicYear);
+    const dateResult = await dateSettingModel.findOne({ _id: objectId });
+    const academicYear = await academicYearModel.findById(
+      dateResult?.academicYear
     );
 
     transformList.push({
