@@ -713,7 +713,7 @@ const contributionOverview = asyncHandler(async (req, resp) => {
     transformList.push({
       id: el.id,
       user: user.name,
-      academicYear: academicYear.year,
+      academicYear: academicYear?.year,
       faculty: faculty.name,
     });
 
